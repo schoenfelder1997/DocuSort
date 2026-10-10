@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PySide6.QtCore import QDir, QSettings, Qt, QUrl
+from PySide6.QtCore import QDate, QDir, QSettings, Qt, QUrl
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QApplication,
@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QInputDialog,
     QLabel,
+    QDateEdit,
     QLineEdit,
     QListWidget,
     QListWidgetItem,
@@ -98,7 +99,9 @@ class MainWindow(QMainWindow):
 
         self.name_input = QLineEdit()
         self.topic_input = QLineEdit()
-        self.date_input = QLineEdit()
+        self.date_input = QDateEdit()
+        self.date_input.setDisplayFormat("yyyy-MM-dd")
+        self.date_input.setCalendarPopup(True)
 
         self.date_format_group = QWidget()
         date_layout = QHBoxLayout(self.date_format_group)
@@ -121,7 +124,8 @@ class MainWindow(QMainWindow):
         form_layout.addRow("Date", date_field)
         form_layout.addRow("Topic", self.topic_input)
         form_layout.addRow("Name", self.name_input)
-        for field in (self.date_input, self.topic_input, self.name_input):
+        self.date_input.dateChanged.connect(self.save_session_state)
+        for field in (self.topic_input, self.name_input):
             field.textChanged.connect(self.save_session_state)
         for radio in (self.date_radio_full, self.date_radio_month, self.date_radio_year, self.date_radio_none):
             radio.toggled.connect(self.save_session_state)
@@ -269,7 +273,11 @@ class MainWindow(QMainWindow):
 
         self.name_input.setText(resume_values.get("name", metadata["title"]))
         self.topic_input.setText(resume_values.get("topic", topic))
-        self.date_input.setText(resume_values.get("date", metadata["date"]))
+        parsed_date = QDate.fromString(
+            resume_values.get("date", metadata["date"]),
+            Qt.DateFormat.ISODate,
+        )
+        self.date_input.setDate(parsed_date if parsed_date.isValid() else QDate.currentDate())
         date_radios = {
             "YYYY-MM-dd": self.date_radio_full,
             "YYYY-MM": self.date_radio_month,
@@ -304,7 +312,7 @@ class MainWindow(QMainWindow):
         self.settings.setValue("current_file", str(self.current_file))
         self.settings.setValue("pending_name", self.name_input.text())
         self.settings.setValue("pending_topic", self.topic_input.text())
-        self.settings.setValue("pending_date", self.date_input.text())
+        self.settings.setValue("pending_date", self.date_input.date().toString(Qt.DateFormat.ISODate))
         if self.date_radio_month.isChecked():
             date_format = "YYYY-MM"
         elif self.date_radio_year.isChecked():
@@ -321,7 +329,7 @@ class MainWindow(QMainWindow):
             return
 
         name = self.name_input.text()
-        date_value = self.date_input.text()
+        date_value = self.date_input.date().toString(Qt.DateFormat.ISODate)
         topic = self.topic_input.text()
 
         if not self.current_target_folder or not self.current_target_folder.exists():
