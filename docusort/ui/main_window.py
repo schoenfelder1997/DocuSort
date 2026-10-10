@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from PySide6.QtCore import QDir, QSettings, Qt
+from PySide6.QtCore import QDir, QSettings, Qt, QUrl
+from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QApplication,
     QFileDialog,
@@ -66,6 +67,7 @@ class MainWindow(QMainWindow):
 
         self.file_list = QListWidget()
         self.file_list.itemClicked.connect(self.on_file_selected)
+        self.file_list.itemDoubleClicked.connect(self.open_file)
         left_layout.addWidget(self.file_list)
 
         right_column = QWidget()
@@ -284,6 +286,11 @@ class MainWindow(QMainWindow):
                 if Path(path).is_dir():
                     self.current_target_folder = Path(path)
         self.save_session_state()
+
+    @staticmethod
+    def open_file(item: QListWidgetItem) -> None:
+        file_path = Path(item.data(Qt.ItemDataRole.UserRole))
+        QDesktopServices.openUrl(QUrl.fromLocalFile(str(file_path)))
 
     def save_session_state(self) -> None:
         self.settings.setValue("source_directory", str(self.source_directory))
