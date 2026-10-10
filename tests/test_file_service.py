@@ -35,6 +35,22 @@ class FileServiceTests(unittest.TestCase):
 
             self.assertEqual(target.name, "2024-06-05_Company_Invoice_2.pdf")
 
+    def test_list_files_includes_nested_files_in_relative_path_order(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            directory = Path(temp_dir)
+            nested_directory = directory / "nested"
+            nested_directory.mkdir()
+            (directory / "z.pdf").write_text("root")
+            (nested_directory / "a.pdf").write_text("nested")
+            (nested_directory / ".hidden.pdf").write_text("hidden")
+
+            files = FileService.list_files(directory)
+
+            self.assertEqual(
+                [path.relative_to(directory).as_posix() for path in files],
+                ["nested/a.pdf", "z.pdf"],
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

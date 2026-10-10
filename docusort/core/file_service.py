@@ -20,8 +20,8 @@ class FileService:
         if not directory.exists():
             return []
         return sorted(
-            [path for path in directory.iterdir() if path.is_file() and not path.name.startswith(".")],
-            key=lambda item: item.name.lower(),
+            [path for path in directory.rglob("*") if path.is_file() and not path.name.startswith(".")],
+            key=lambda item: item.relative_to(directory).as_posix().lower(),
         )
 
     @staticmethod

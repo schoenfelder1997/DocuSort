@@ -171,14 +171,22 @@ class MainWindow(QMainWindow):
         if not self.source_directory.exists():
             return
         for file_path in self.file_service.list_files(self.source_directory):
-            self.file_list.addItem(QListWidgetItem(file_path.name))
+            item = QListWidgetItem(file_path.relative_to(self.source_directory).as_posix())
+            item.setData(Qt.ItemDataRole.UserRole, str(file_path))
+            self.file_list.addItem(item)
 
         saved_file = Path(self.settings.value("current_file", "", type=str))
-        if saved_file.parent == self.source_directory and saved_file.is_file():
-            matches = self.file_list.findItems(saved_file.name, Qt.MatchFlag.MatchExactly)
-            if matches:
-                self.file_list.setCurrentItem(matches[0])
-                self.on_file_selected(matches[0])
+        if saved_file.is_file():
+            try:
+                saved_file.relative_to(self.source_directory)
+            except ValueError:
+                return
+            for index in range(self.file_list.count()):
+                item = self.file_list.item(index)
+                if Path(item.data(Qt.ItemDataRole.UserRole)) == saved_file:
+                    self.file_list.setCurrentItem(item)
+                    self.on_file_selected(item)
+                    break
 
     def load_target_directory(self) -> None:
         if not self.target_directory.exists():
@@ -239,8 +247,7 @@ class MainWindow(QMainWindow):
         if not self.source_directory.exists():
             return
 
-        selected_name = item.text()
-        self.current_file = self.source_directory / selected_name
+        self.current_file = Path(item.data(Qt.ItemDataRole.UserRole))
         metadata = self.metadata_extractor.extract(self.current_file)
 
         saved_file = self.settings.value("current_file", "", type=str)
