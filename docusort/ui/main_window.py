@@ -363,7 +363,18 @@ class MainWindow(QMainWindow):
                     return
                 final_path = self.current_target_folder / f"{custom_name.strip()}{self.current_file.suffix}"
 
-        final_destination = self.file_service.move_to_destination(self.current_file, final_path)
+        try:
+            final_destination = self.file_service.move_to_destination(self.current_file, final_path)
+        except OSError as error:
+            QMessageBox.warning(
+                self,
+                "Could not move file",
+                "The file was not moved. It may be open or in use by another process. "
+                "Close it or wait for any sync to finish, then try again.\n\n"
+                f"Details: {error}",
+            )
+            return
+
         QMessageBox.information(self, "File moved", f"File moved to:\n{final_destination}")
         self.load_source_directory()
         self.load_target_directory()
