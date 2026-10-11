@@ -168,8 +168,18 @@ class MainWindow(QMainWindow):
         if not ok or not folder_name.strip():
             return
 
-        new_folder = self.target_directory / folder_name.strip()
+        parent_folder = self.current_target_folder or self.target_directory
+        try:
+            parent_folder.relative_to(self.target_directory)
+        except ValueError:
+            parent_folder = self.target_directory
+        if not parent_folder.is_dir():
+            parent_folder = self.target_directory
+
+        new_folder = parent_folder / folder_name.strip()
         new_folder.mkdir(parents=True, exist_ok=True)
+        self.current_target_folder = new_folder
+        self.settings.setValue("selected_target_folder", str(new_folder))
         self.load_target_directory()
 
     def load_source_directory(self) -> None:
