@@ -5,6 +5,7 @@ DocuSort is a desktop application for sorting scanned and digital documents into
 ## Project goals
 
 - select a source directory and process files one by one
+- choose whether files in source subdirectories are included
 - show the target folder tree for placement
 - prefill document metadata such as title, company, and date
 - let the user review and correct metadata before moving the file

@@ -51,6 +51,18 @@ class FileServiceTests(unittest.TestCase):
                 ["nested/a.pdf", "z.pdf"],
             )
 
+    def test_list_files_can_exclude_nested_files(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            directory = Path(temp_dir)
+            nested_directory = directory / "nested"
+            nested_directory.mkdir()
+            (directory / "root.pdf").write_text("root")
+            (nested_directory / "nested.pdf").write_text("nested")
+
+            files = FileService.list_files(directory, recursive=False)
+
+            self.assertEqual([path.name for path in files], ["root.pdf"])
+
 
 if __name__ == "__main__":
     unittest.main()

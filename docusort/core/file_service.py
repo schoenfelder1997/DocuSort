@@ -16,11 +16,12 @@ class DocumentCandidate:
 
 class FileService:
     @staticmethod
-    def list_files(directory: Path) -> list[Path]:
-        if not directory.exists():
+    def list_files(directory: Path, recursive: bool = True) -> list[Path]:
+        if not directory.is_dir():
             return []
+        candidates = directory.rglob("*") if recursive else directory.iterdir()
         return sorted(
-            [path for path in directory.rglob("*") if path.is_file() and not path.name.startswith(".")],
+            [path for path in candidates if path.is_file() and not path.name.startswith(".")],
             key=lambda item: item.relative_to(directory).as_posix().lower(),
         )
 

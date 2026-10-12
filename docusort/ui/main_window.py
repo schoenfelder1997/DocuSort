@@ -6,6 +6,7 @@ from PySide6.QtCore import QDate, QDir, QSettings, Qt, QUrl
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QApplication,
+    QCheckBox,
     QFileDialog,
     QFileSystemModel,
     QFormLayout,
@@ -40,6 +41,7 @@ class MainWindow(QMainWindow):
         default_directory = Path.home() / "Documents"
         saved_source = Path(self.settings.value("source_directory", str(default_directory), type=str))
         saved_target = Path(self.settings.value("target_directory", str(default_directory), type=str))
+        self.recursive_source_listing = self.settings.value("recursive_source_listing", False, type=bool)
         self.source_directory = saved_source if saved_source.is_dir() else default_directory
         self.target_directory = saved_target if saved_target.is_dir() else default_directory
         self.current_file: Path | None = None
@@ -72,6 +74,11 @@ class MainWindow(QMainWindow):
         source_row.addWidget(self.source_button)
         source_row.addWidget(self.source_path_label, 1)
         left_layout.addLayout(source_row)
+
+        self.recursive_source_checkbox = QCheckBox("Include files in subfolders")
+        self.recursive_source_checkbox.setChecked(self.recursive_source_listing)
+        self.recursive_source_checkbox.toggled.connect(self.on_recursive_source_toggled)
+        left_layout.addWidget(self.recursive_source_checkbox)
 
         self.file_list = QListWidget()
         self.file_list.itemClicked.connect(self.on_file_selected)
@@ -185,6 +192,11 @@ class MainWindow(QMainWindow):
             self.load_target_directory()
             self.save_session_state()
 
+    def on_recursive_source_toggled(self, checked: bool) -> None:
+        self.recursive_source_listing = checked
+        self.settings.setValue("recursive_source_listing", checked)
+        self.load_source_directory()
+
     def create_target_folder(self) -> None:
         if not self.target_directory.exists():
             QMessageBox.warning(self, "Target folder missing", "Please select a valid target folder first.")
@@ -209,10 +221,11 @@ class MainWindow(QMainWindow):
         self.load_target_directory()
 
     def load_source_directory(self) -> None:
+        self.current_file = None
         self.file_list.clear()
-        if not self.source_directory.exists():
+        if not self.source_directory.is_dir():
             return
-        for file_path in self.file_service.list_files(self.source_directory):
+        for file_path in self.file_service.list_files(self.source_directory, self.recursive_source_listing):
             item = QListWidgetItem(file_path.relative_to(self.source_directory).as_posix())
             item.setData(Qt.ItemDataRole.UserRole, str(file_path))
             self.file_list.addItem(item)
