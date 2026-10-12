@@ -56,11 +56,7 @@ jobs:
           if versions:
               major, minor, patch = max(versions)
           else:
-              source = Path("docusort/__init__.py").read_text(encoding="utf-8")
-              match = re.search(r'^__version__\s*=\s*"([^"]+)"$', source, re.MULTILINE)
-              if match is None or version_pattern.fullmatch(match.group(1)) is None:
-                  raise SystemExit("No valid SemVer tag or package version was found.")
-              major, minor, patch = map(int, version_pattern.fullmatch(match.group(1)).groups())
+              major, minor, patch = 0, 0, 0
 
           bump = os.environ["BUMP"]
           if bump == "major":

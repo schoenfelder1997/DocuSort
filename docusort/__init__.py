@@ -1,5 +1,5 @@
 """DocuSort application package."""
 
-__version__ = "0.1.0"
+__version__ = "dev"
 
 __all__ = ["__version__", "main"]
