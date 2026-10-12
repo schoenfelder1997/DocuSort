@@ -25,6 +25,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from docusort import __version__
 from docusort.core.file_service import FileService
 from docusort.core.metadata_extractor import MetadataExtractor
 
@@ -48,8 +49,14 @@ class MainWindow(QMainWindow):
         self.metadata_extractor = MetadataExtractor()
 
         self._build_ui()
+        self._build_menu()
         self.load_target_directory()
         self.load_source_directory()
+
+    def _build_menu(self) -> None:
+        help_menu = self.menuBar().addMenu("Help")
+        about_action = help_menu.addAction("About DocuSort")
+        about_action.triggered.connect(self.show_about_dialog)
 
     def _build_ui(self) -> None:
         central = QWidget()
@@ -138,6 +145,25 @@ class MainWindow(QMainWindow):
         main_layout.addWidget(left_column, 1)
         main_layout.addWidget(right_column, 2)
         self.setCentralWidget(central)
+        self.statusBar().addPermanentWidget(QLabel(f"Version {__version__}"))
+
+    def show_about_dialog(self) -> None:
+        QMessageBox.about(
+            self,
+            "About DocuSort",
+            f"""
+            <h2>DocuSort</h2>
+            <p>Version {__version__}</p>
+            <h3>Change log</h3>
+            <p><b>{__version__}</b> — Initial release</p>
+            <ul>
+                <li>Review documents and edit their date, topic, and name.</li>
+                <li>Choose source and target folders, and create target folders.</li>
+                <li>Move and rename documents with duplicate-name handling.</li>
+                <li>Restore the last workspace and pending document details.</li>
+            </ul>
+            """,
+        )
 
     def choose_source_directory(self) -> None:
         directory = QFileDialog.getExistingDirectory(self, "Select Source Folder", self.source_directory.as_posix())
