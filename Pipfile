@@ -14,3 +14,5 @@ python_version = "3.13"
 
 [scripts]
 start = "python main.py"
+unittest = "python -m unittest discover -s tests -p test_file_service.py -v"
+systemtest = "python -m unittest discover -s tests -p test_system.py -v"
