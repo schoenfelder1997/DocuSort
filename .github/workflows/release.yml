@@ -1,0 +1,159 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: Semantic version component to increment
+        required: true
+        type: choice
+        options:
+          - major
+          - minor
+          - patch
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  calculate-version:
+    name: Calculate release version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+    steps:
+      - name: Check out repository and tags
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Calculate next semantic version
+        id: version
+        env:
+          BUMP: ${{ inputs.bump }}
+        run: |
+          python - <<'PY'
+          import os
+          import re
+          import subprocess
+          from pathlib import Path
+
+          version_pattern = re.compile(r"^v?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$")
+          tags = subprocess.check_output(
+              ["git", "tag", "--list"], text=True
+          ).splitlines()
+          versions = []
+          for tag in tags:
+              match = version_pattern.fullmatch(tag)
+              if match:
+                  versions.append(tuple(map(int, match.groups())))
+
+          if versions:
+              major, minor, patch = max(versions)
+          else:
+              source = Path("docusort/__init__.py").read_text(encoding="utf-8")
+              match = re.search(r'^__version__\s*=\s*"([^"]+)"$', source, re.MULTILINE)
+              if match is None or version_pattern.fullmatch(match.group(1)) is None:
+                  raise SystemExit("No valid SemVer tag or package version was found.")
+              major, minor, patch = map(int, version_pattern.fullmatch(match.group(1)).groups())
+
+          bump = os.environ["BUMP"]
+          if bump == "major":
+              major, minor, patch = major + 1, 0, 0
+          elif bump == "minor":
+              major, minor, patch = major, minor + 1, 0
+          elif bump == "patch":
+              patch += 1
+          else:
+              raise SystemExit(f"Unsupported version bump: {bump}")
+
+          version = f"{major}.{minor}.{patch}"
+          tag = f"v{version}"
+          if tag in tags:
+              raise SystemExit(f"Release tag {tag} already exists.")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"version={version}\n")
+              output.write(f"tag={tag}\n")
+          print(f"Next version: {version}")
+          PY
+
+  build:
+    name: Build Windows executable
+    needs: calculate-version
+    runs-on: windows-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install Pipenv
+        run: python -m pip install pipenv
+
+      - name: Install application and development dependencies
+        run: pipenv install --dev
+
+      - name: Set packaged application version
+        env:
+          RELEASE_VERSION: ${{ needs.calculate-version.outputs.version }}
+        run: |
+          $path = "docusort/__init__.py"
+          $content = Get-Content $path -Raw
+          $updated = [regex]::Replace(
+            $content,
+            '(?m)^__version__\s*=\s*"[^"]+"$',
+            "__version__ = `"$env:RELEASE_VERSION`""
+          )
+          if ($updated -eq $content) {
+            throw "Could not update the package version."
+          }
+          Set-Content -Path $path -Value $updated -NoNewline
+
+      - name: Run tests
+        run: pipenv run python -m unittest discover -s tests -v
+
+      - name: Build executable
+        run: pipenv run pyinstaller --noconfirm --clean --onefile --windowed --name DocuSort main.py
+
+      - name: Upload executable
+        uses: actions/upload-artifact@v4
+        with:
+          name: DocuSort-windows-${{ needs.calculate-version.outputs.version }}
+          path: dist/DocuSort.exe
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    name: Publish GitHub release
+    needs:
+      - calculate-version
+      - build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download executable artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: DocuSort-windows-${{ needs.calculate-version.outputs.version }}
+          path: release-assets
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.calculate-version.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: DocuSort ${{ needs.calculate-version.outputs.tag }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: release-assets/DocuSort.exe

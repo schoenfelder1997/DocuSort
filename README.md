@@ -36,6 +36,12 @@ Optional:
 - Start with the custom script:
   pipenv run start
 
+## Download
+
+Download the latest Windows executable from the [latest GitHub release](https://github.com/schoenfelder1997/DocuSort/releases/latest/download/DocuSort.exe).
+
+To publish a release, run the **Release** workflow from the GitHub Actions tab and choose a major, minor, or patch version bump. The workflow builds the executable and attaches it to the release.
+
 ## Notes
 
 This is the initial working scaffold. The first version focuses on the core review-and-sort workflow, while AI-based analysis and smart folder suggestions are planned as future enhancements.
