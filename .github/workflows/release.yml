@@ -107,7 +107,7 @@ jobs:
           $content = Get-Content $path -Raw
           $updated = [regex]::Replace(
             $content,
-            '(?m)^__version__\s*=\s*"[^"]+"$',
+            '(?m)^__version__\s*=\s*"[^"]+"\r?$',
             "__version__ = `"$env:RELEASE_VERSION`""
           )
           if ($updated -eq $content) {
